@@ -1,0 +1,4 @@
+spendwise.test {
+  reverse_proxy 127.0.0.1:5001
+  tls /Users/e38039/Downloads/Expense-Tracker/spendwise.test.pem /Users/e38039/Downloads/Expense-Tracker/spendwise.test-key.pem
+}
