@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertGoalSchema, type InsertGoal } from "@shared/schema";
@@ -75,6 +75,10 @@ export function GoalForm({ initialValues, onSubmit, submitLabel = "Save goals", 
     resolver: zodResolver(insertGoalSchema),
     defaultValues,
   });
+
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [form, defaultValues]);
 
   const successType = form.watch("successType");
 
@@ -181,31 +185,31 @@ export function GoalForm({ initialValues, onSubmit, submitLabel = "Save goals", 
                 )}
               />
             )}
-
-            {(successType === "percent_income" || successType === "monthly_saving") && (
-              <FormField
-                control={form.control}
-                name="incomeMonthly"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Monthly income</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="e.g. 5000"
-                        {...field}
-                        value={field.value ?? ""}
-                      />
-                    </FormControl>
-                    <FormDescription>Used only to calculate your savings rate.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            )}
           </div>
         )}
+
+        <FormField
+          control={form.control}
+          name="incomeMonthly"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Monthly income</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  step="0.01"
+                  placeholder="e.g. 5000"
+                  {...field}
+                  value={field.value ?? ""}
+                />
+              </FormControl>
+              <FormDescription>
+                Required — used to calculate savings rate and tailor insights.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         <FormField
           control={form.control}

@@ -266,5 +266,36 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     });
   });
 
+  app.post("/api/admin/summary/send-all", async (req, res) => {
+    if (!requireAdmin(req, res)) return;
+
+    const users = await storage.getAllUsers();
+    const sent: { username: string; email: string }[] = [];
+    const skipped: { username: string; email: string | null; reason: string }[] = [];
+
+    for (const user of users) {
+      const result = await generateAndEmailSummaryForUser(user, {
+        forceSend: true,
+        forceRegenerate: true,
+      });
+
+      if (result.sent) {
+        sent.push({ username: user.username, email: user.email ?? "" });
+      } else {
+        skipped.push({
+          username: user.username,
+          email: user.email ?? null,
+          reason: result.reason,
+        });
+      }
+    }
+
+    res.status(200).json({
+      message: `Attempted summaries for ${users.length} users`,
+      sent,
+      skipped,
+    });
+  });
+
   return httpServer;
 }

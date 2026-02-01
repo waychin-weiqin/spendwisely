@@ -1,12 +1,15 @@
 import { useExpenses } from "@/hooks/use-expenses";
 import { useIncomes } from "@/hooks/use-incomes";
 import { useGoals } from "@/hooks/use-goals";
-import { format, subDays, isSameMonth, isAfter, isBefore, startOfDay, startOfMonth } from "date-fns";
+import { format, subDays, isSameMonth, isAfter, isBefore, startOfDay, startOfMonth, addMonths, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sidebar, MobileNav } from "@/components/layout/Sidebar";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { Loader2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, MapPin, Tag, Wallet, Banknote, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
+import { CreateIncomeDialog } from "@/components/incomes/CreateIncomeDialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
@@ -16,6 +19,7 @@ export default function Dashboard() {
   const { incomes, isLoading: incomesLoading } = useIncomes();
   const { goals } = useGoals({ enabled: true });
   const [timeRange, setTimeRange] = useState("monthly");
+  const [spentMonthOffset, setSpentMonthOffset] = useState(0);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -43,6 +47,31 @@ export default function Dashboard() {
       savingsRate,
     };
   }, [expenses, incomes, goals]);
+
+  const spentBreakdown = useMemo(() => {
+    const now = new Date();
+    const targetMonth = addMonths(now, -spentMonthOffset);
+    const monthStart = startOfMonth(targetMonth);
+    const monthEnd = endOfMonth(targetMonth);
+
+    const totals = new Map<string, number>();
+    expenses.forEach((expense) => {
+      const expenseDate = new Date(expense.date);
+      if (expenseDate >= monthStart && expenseDate <= monthEnd) {
+        totals.set(expense.category, (totals.get(expense.category) || 0) + Number(expense.amount));
+      }
+    });
+
+    const entries = Array.from(totals.entries())
+      .map(([category, amount]) => ({ category, amount }))
+      .sort((a, b) => b.amount - a.amount);
+
+    return {
+      entries,
+      monthLabel: format(monthStart, "MMMM yyyy"),
+      total: entries.reduce((sum, entry) => sum + entry.amount, 0),
+    };
+  }, [expenses, spentMonthOffset]);
 
   const chartData = useMemo(() => {
     if (!expenses.length && !incomes.length) return [];
@@ -125,12 +154,20 @@ export default function Dashboard() {
       <Sidebar />
       
       <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1600px] mx-auto w-full animate-in">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Income, spending, and momentum in one place.</p>
+        <header className="relative mb-10 overflow-hidden rounded-3xl border border-border/50 bg-white/80 px-6 py-7 shadow-xl shadow-black/5 backdrop-blur-sm md:px-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_40%),radial-gradient(circle_at_bottom,_rgba(16,185,129,0.16),_transparent_55%)]" />
+          <div className="absolute -right-16 -top-20 h-40 w-40 rounded-full bg-gradient-to-br from-blue-400/30 via-cyan-300/20 to-transparent blur-3xl" />
+          <div className="absolute -left-16 -bottom-24 h-44 w-44 rounded-full bg-gradient-to-tr from-emerald-400/25 via-teal-300/20 to-transparent blur-3xl" />
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-foreground">Overview</h1>
+              <p className="text-muted-foreground mt-1">Income, spending, and momentum in one place.</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <CreateIncomeDialog />
+              <CreateExpenseDialog />
+            </div>
           </div>
-          <CreateExpenseDialog />
         </header>
 
         {/* Cash Flow Snapshot */}
@@ -150,20 +187,68 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">This Month Spent</CardTitle>
-              <DollarSign className="w-4 h-4 text-primary" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl font-bold font-display">
-                ${stats.thisMonthSpent.toFixed(0)}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">This Month Spent</CardTitle>
+                  <DollarSign className="w-4 h-4 text-primary" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold font-display">
+                    ${stats.thisMonthSpent.toFixed(0)}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {format(new Date(), "MMMM yyyy")}
+                  </p>
+                </CardContent>
+              </Card>
+            </DialogTrigger>
+            <DialogContent className="max-w-xl">
+              <DialogHeader className="space-y-1">
+                <DialogTitle>Spending by category</DialogTitle>
+                <DialogDescription>{spentBreakdown.monthLabel}</DialogDescription>
+              </DialogHeader>
+              <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSpentMonthOffset((prev) => prev + 1)}
+                >
+                  Previous month
+                </Button>
+                <span className="text-sm text-muted-foreground">{spentBreakdown.monthLabel}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setSpentMonthOffset((prev) => Math.max(0, prev - 1))}
+                  disabled={spentMonthOffset === 0}
+                >
+                  Next month
+                </Button>
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {format(new Date(), "MMMM yyyy")}
-              </p>
-            </CardContent>
-          </Card>
+              {spentBreakdown.entries.length ? (
+                <div className="space-y-3">
+                  {spentBreakdown.entries.map((entry) => (
+                    <div key={entry.category} className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
+                      <span className="text-sm font-medium text-foreground">{entry.category}</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        ${entry.amount.toFixed(0)}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between pt-2 text-sm font-semibold">
+                    <span>Total</span>
+                    <span>${spentBreakdown.total.toFixed(0)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                  No expenses recorded for this month.
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between pb-2">

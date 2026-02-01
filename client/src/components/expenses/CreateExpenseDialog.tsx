@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -22,12 +22,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from "date-fns";
 import { CalendarIcon, Loader2, Plus, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
 
 const formSchema = insertExpenseSchema.extend({
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
@@ -61,6 +63,7 @@ export function CreateExpenseDialog({
 }: CreateExpenseDialogProps) {
   const [open, setOpen] = useState(false);
   const { createExpense, updateExpense, isCreating, isUpdating } = useExpenses();
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -69,11 +72,34 @@ export function CreateExpenseDialog({
       category: initialValues?.category ?? "",
       location: initialValues?.location ?? "",
       remark: initialValues?.remark ?? "",
+      taxReducible: initialValues?.taxReducible ?? false,
       date: initialValues?.date ? new Date(initialValues.date as any) : new Date(),
     },
   });
 
   const isEdit = Boolean(initialValues?.id);
+
+  const triggerConfetti = () => {
+    const button = saveButtonRef.current;
+    const rect = button?.getBoundingClientRect();
+    const origin = rect
+      ? {
+          x: (rect.left + rect.width / 2) / window.innerWidth,
+          y: (rect.top + rect.height / 2) / window.innerHeight,
+        }
+      : { x: 0.5, y: 0.6 };
+
+    confetti({
+      particleCount: 13,
+      spread: 55,
+      startVelocity: 14,
+      gravity: 0.9,
+      scalar: 0.9,
+      origin,
+    });
+
+    // Single burst only
+  };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (initialValues?.id) {
@@ -90,9 +116,12 @@ export function CreateExpenseDialog({
     } else {
       createExpense(values, {
         onSuccess: () => {
-          setOpen(false);
-          form.reset();
-          onSuccess?.();
+          triggerConfetti();
+          window.setTimeout(() => {
+            setOpen(false);
+            form.reset();
+            onSuccess?.();
+          }, 900);
         },
       });
     }
@@ -253,11 +282,33 @@ export function CreateExpenseDialog({
                 )}
               />
 
+              <FormField
+                control={form.control}
+                name="taxReducible"
+                render={({ field }) => (
+                  <FormItem className="rounded-lg border border-border/50 p-3">
+                    <div className="flex items-center gap-3">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={(checked) => field.onChange(Boolean(checked))}
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-medium leading-none">
+                        Tax reducible
+                      </FormLabel>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="flex justify-end pt-4">
                 <Button 
                   type="submit" 
                   disabled={isCreating || isUpdating}
                   className="w-full sm:w-auto"
+                  ref={saveButtonRef}
                 >
                   {isCreating || isUpdating ? (
                     <>

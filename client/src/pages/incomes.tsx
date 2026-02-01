@@ -55,12 +55,16 @@ export default function IncomesPage() {
       <Sidebar />
 
       <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1600px] mx-auto w-full animate-in">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Income</h1>
-            <p className="text-muted-foreground mt-1">Track all incoming cash flow.</p>
+        <header className="relative mb-10 overflow-hidden rounded-3xl border border-border/50 bg-white/80 px-6 py-7 shadow-xl shadow-black/5 backdrop-blur-sm md:px-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(16,185,129,0.16),_transparent_55%)]" />
+          <div className="absolute -right-16 -top-20 h-40 w-40 rounded-full bg-gradient-to-br from-emerald-400/30 via-teal-300/20 to-transparent blur-3xl" />
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-foreground">All income</h1>
+              <p className="text-muted-foreground mt-1">Track all incoming cash flow.</p>
+            </div>
+            <CreateIncomeDialog />
           </div>
-          <CreateIncomeDialog />
         </header>
 
         <Card className="border-border/50 shadow-sm mb-6">

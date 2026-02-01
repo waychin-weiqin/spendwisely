@@ -19,6 +19,7 @@ export const expenses = pgTable("expenses", {
   location: text("location").notNull(),
   date: timestamp("date").notNull(),
   remark: text("remark"),
+  taxReducible: boolean("tax_reducible").notNull().default(false),
 });
 
 export const incomes = pgTable("incomes", {
@@ -124,6 +125,7 @@ export const insertExpenseSchema = createInsertSchema(expenses).omit({
 }).extend({
   amount: z.coerce.number().positive(),
   date: z.coerce.date(),
+  taxReducible: z.coerce.boolean().optional().default(false),
 });
 
 export const insertIncomeSchema = createInsertSchema(incomes).omit({

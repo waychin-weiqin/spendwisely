@@ -6,6 +6,7 @@ import { Loader2, Search, Filter, Download, Trash2, MapPin, Tag, CalendarIcon, P
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -40,6 +41,7 @@ export default function ExpensesPage() {
   const { expenses, isLoading, deleteExpense } = useExpenses();
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [taxOnly, setTaxOnly] = useState(false);
 
   // Derived state for filtering
   const categories = useMemo(() => {
@@ -58,19 +60,22 @@ export default function ExpensesPage() {
         categoryFilter.length === 0 || 
         categoryFilter.includes(expense.category);
 
-      return matchesSearch && matchesCategory;
+      const matchesTax = !taxOnly || expense.taxReducible;
+
+      return matchesSearch && matchesCategory && matchesTax;
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [expenses, searchTerm, categoryFilter]);
+  }, [expenses, searchTerm, categoryFilter, taxOnly]);
 
   const handleExport = () => {
     const rows = [
-      ["Date", "Category", "Location", "Amount", "Remark"],
+      ["Date", "Category", "Location", "Amount", "Remark", "Tax reducible"],
       ...filteredExpenses.map((e) => [
         format(new Date(e.date), "yyyy-MM-dd"),
         e.category,
         e.location,
         Number(e.amount).toFixed(2),
         e.remark || "",
+        e.taxReducible ? "Yes" : "No",
       ]),
     ];
 
@@ -104,16 +109,20 @@ export default function ExpensesPage() {
       <Sidebar />
       
       <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1600px] mx-auto w-full animate-in">
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div>
-            <h1 className="text-3xl font-display font-bold text-foreground">Expenses</h1>
-            <p className="text-muted-foreground mt-1">Manage and review your transaction history.</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" className="gap-2" onClick={handleExport}>
-              <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export CSV</span>
-            </Button>
-            <CreateExpenseDialog />
+        <header className="relative mb-10 overflow-hidden rounded-3xl border border-border/50 bg-white/80 px-6 py-7 shadow-xl shadow-black/5 backdrop-blur-sm md:px-8">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.12),_transparent_55%)]" />
+          <div className="absolute -right-16 -top-20 h-40 w-40 rounded-full bg-gradient-to-br from-blue-400/25 via-cyan-300/20 to-transparent blur-3xl" />
+          <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-3xl font-display font-bold text-foreground">All expenses</h1>
+              <p className="text-muted-foreground mt-1">Manage and review your transaction history.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleExport}>
+                <Download className="w-4 h-4" /> <span className="hidden sm:inline">Export CSV</span>
+              </Button>
+              <CreateExpenseDialog />
+            </div>
           </div>
         </header>
 
@@ -128,31 +137,41 @@ export default function ExpensesPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="w-full sm:w-auto gap-2">
-                  <Filter className="w-4 h-4" /> Filter Categories
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-950">
-                <DropdownMenuLabel>Select Categories</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {categories.map(cat => (
-                  <DropdownMenuCheckboxItem
-                    key={cat}
-                    checked={categoryFilter.includes(cat)}
-                    onCheckedChange={(checked) => {
-                      setCategoryFilter(prev => 
-                        checked ? [...prev, cat] : prev.filter(c => c !== cat)
-                      );
-                    }}
-                  >
-                    {cat}
-                  </DropdownMenuCheckboxItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="w-full sm:w-auto gap-2">
+                    <Filter className="w-4 h-4" /> Filter Categories
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-white dark:bg-slate-950">
+                  <DropdownMenuLabel>Select Categories</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {categories.map(cat => (
+                    <DropdownMenuCheckboxItem
+                      key={cat}
+                      checked={categoryFilter.includes(cat)}
+                      onCheckedChange={(checked) => {
+                        setCategoryFilter(prev => 
+                          checked ? [...prev, cat] : prev.filter(c => c !== cat)
+                        );
+                      }}
+                    >
+                      {cat}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <label className="flex items-center gap-2 rounded-md border border-border/50 px-3 py-2 text-sm text-muted-foreground">
+                <Checkbox
+                  checked={taxOnly}
+                  onCheckedChange={(checked) => setTaxOnly(Boolean(checked))}
+                />
+                Tax reducible only
+              </label>
+            </div>
           </div>
         </Card>
 
@@ -190,6 +209,12 @@ export default function ExpensesPage() {
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
                           {expense.category}
                         </span>
+                        {expense.taxReducible ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700">
+                            <Tag className="h-3 w-3" />
+                            Tax
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">

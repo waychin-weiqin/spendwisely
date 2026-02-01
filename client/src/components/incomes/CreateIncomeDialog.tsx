@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,6 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format } from "date-fns";
 import { CalendarIcon, Loader2, Plus, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
+import confetti from "canvas-confetti";
 
 const formSchema = insertIncomeSchema.extend({
   amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
@@ -46,6 +47,7 @@ export function CreateIncomeDialog({
 }: CreateIncomeDialogProps) {
   const [open, setOpen] = useState(false);
   const { createIncome, updateIncome, isCreating, isUpdating } = useIncomes();
+  const saveButtonRef = useRef<HTMLButtonElement | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -59,6 +61,26 @@ export function CreateIncomeDialog({
 
   const isEdit = Boolean(initialValues?.id);
   const triggerIsIcon = triggerLabel === "";
+
+  const triggerConfetti = () => {
+    const button = saveButtonRef.current;
+    const rect = button?.getBoundingClientRect();
+    const origin = rect
+      ? {
+          x: (rect.left + rect.width / 2) / window.innerWidth,
+          y: (rect.top + rect.height / 2) / window.innerHeight,
+        }
+      : { x: 0.5, y: 0.6 };
+
+    confetti({
+      particleCount: 13,
+      spread: 55,
+      startVelocity: 14,
+      gravity: 0.9,
+      scalar: 0.9,
+      origin,
+    });
+  };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (initialValues?.id) {
@@ -75,6 +97,7 @@ export function CreateIncomeDialog({
     } else {
       createIncome(values, {
         onSuccess: () => {
+          triggerConfetti();
           setOpen(false);
           form.reset();
           onSuccess?.();
@@ -92,7 +115,7 @@ export function CreateIncomeDialog({
               ? triggerIsIcon
                 ? "opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
                 : "gap-2"
-              : "gap-2 shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
+              : "gap-2 bg-emerald-600 text-white shadow-lg shadow-emerald-500/25 hover:bg-emerald-700 hover:shadow-xl hover:shadow-emerald-500/30 transition-all duration-300"
           }
           size={triggerIsIcon ? "icon" : "default"}
           variant={triggerIsIcon ? "ghost" : "default"}
@@ -208,7 +231,12 @@ export function CreateIncomeDialog({
               />
 
               <div className="flex justify-end pt-4">
-                <Button type="submit" disabled={isCreating || isUpdating} className="w-full sm:w-auto">
+                <Button
+                  type="submit"
+                  disabled={isCreating || isUpdating}
+                  className="w-full sm:w-auto"
+                  ref={saveButtonRef}
+                >
                   {isCreating || isUpdating ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
