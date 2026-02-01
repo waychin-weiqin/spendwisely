@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 
 type EmailPayload = {
   to: string;
@@ -33,6 +34,27 @@ function getTransport() {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<{ skipped: boolean }> {
+  const sendgridKey = process.env.SENDGRID_API_KEY;
+  const sendgridFrom = process.env.SENDGRID_FROM;
+  if (sendgridKey && sendgridFrom) {
+    sgMail.setApiKey(sendgridKey);
+    await sgMail.send({
+      to: payload.to,
+      from: sendgridFrom,
+      subject: payload.subject,
+      text: payload.text,
+      html: payload.html,
+      attachments: payload.attachments?.map((attachment) => ({
+        content: attachment.content.toString("base64"),
+        filename: attachment.filename,
+        type: attachment.contentType,
+        disposition: attachment.contentDisposition ?? "attachment",
+        content_id: attachment.cid,
+      })),
+    });
+    return { skipped: false };
+  }
+
   const transporter = getTransport();
   if (!transporter) {
     console.warn("SMTP is not configured. Skipping email send.");

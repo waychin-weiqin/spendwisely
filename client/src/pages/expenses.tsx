@@ -68,7 +68,7 @@ export default function ExpensesPage() {
 
   const handleExport = () => {
     const rows = [
-      ["Date", "Category", "Location", "Amount", "Remark", "Tax reducible"],
+      ["Date", "Category", "Location", "Amount", "Remark", "Tax deductible"],
       ...filteredExpenses.map((e) => [
         format(new Date(e.date), "yyyy-MM-dd"),
         e.category,
@@ -169,7 +169,7 @@ export default function ExpensesPage() {
                   checked={taxOnly}
                   onCheckedChange={(checked) => setTaxOnly(Boolean(checked))}
                 />
-                Tax reducible only
+                Tax deductible only
               </label>
             </div>
           </div>

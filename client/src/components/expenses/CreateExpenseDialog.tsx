@@ -295,7 +295,7 @@ export function CreateExpenseDialog({
                         />
                       </FormControl>
                       <FormLabel className="text-sm font-medium leading-none">
-                        Tax reducible
+                      Tax deductible
                       </FormLabel>
                     </div>
                     <FormMessage />
