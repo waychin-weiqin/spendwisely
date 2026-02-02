@@ -8,17 +8,18 @@ if (apiBase && typeof window !== "undefined" && !(window as any).__apiFetchWrapp
   const base = apiBase.replace(/\/$/, "");
   const originalFetch = window.fetch.bind(window);
   window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    const nextInit: RequestInit = { credentials: "include", ...init };
     if (typeof input === "string") {
       if (input.startsWith("/")) {
-        return originalFetch(`${base}${input}`, init);
+        return originalFetch(`${base}${input}`, nextInit);
       }
-      return originalFetch(input, init);
+      return originalFetch(input, nextInit);
     }
     if (input instanceof Request && input.url.startsWith("/") && typeof base === "string") {
-      const next = new Request(`${base}${input.url}`, input);
-      return originalFetch(next, init);
+      const next = new Request(`${base}${input.url}`, { ...input, credentials: "include" });
+      return originalFetch(next, nextInit);
     }
-    return originalFetch(input, init);
+    return originalFetch(input, nextInit);
   };
 }
 

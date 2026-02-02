@@ -34,14 +34,20 @@ function hashToken(token: string) {
 }
 
 export function setupAuth(app: Express) {
+  const isProd = app.get("env") === "production";
+  const useSecureCookies = isProd && process.env.COOKIE_SECURE !== "false";
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || "r3pl1t_s3cr3t_k3y",
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
+    cookie: {
+      sameSite: useSecureCookies ? "none" : "lax",
+      secure: useSecureCookies,
+    },
   };
 
-  if (app.get("env") === "production") {
+  if (isProd) {
     app.set("trust proxy", 1);
   }
 
