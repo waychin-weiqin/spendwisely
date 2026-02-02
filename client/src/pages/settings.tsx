@@ -183,7 +183,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row safe-area-top">
       <Sidebar />
 
       <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1400px] mx-auto w-full animate-in">

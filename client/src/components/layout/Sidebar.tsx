@@ -86,7 +86,7 @@ export function MobileNav() {
   const { logout } = useAuth();
   
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border z-50 px-6 py-4 flex justify-between items-center">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border z-50 px-8 pt-3 safe-area-bottom-pad flex justify-between items-center">
       <Link href="/">
         <div className={cn("flex flex-col items-center gap-1", location === "/" ? "text-primary" : "text-muted-foreground")}>
           <LayoutDashboard className="w-6 h-6" />

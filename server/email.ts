@@ -38,7 +38,7 @@ export async function sendEmail(payload: EmailPayload): Promise<{ skipped: boole
   const sendgridFrom = process.env.SENDGRID_FROM;
   if (sendgridKey && sendgridFrom) {
     sgMail.setApiKey(sendgridKey);
-    await sgMail.send({
+    const [response] = await sgMail.send({
       to: payload.to,
       from: sendgridFrom,
       subject: payload.subject,
@@ -51,6 +51,10 @@ export async function sendEmail(payload: EmailPayload): Promise<{ skipped: boole
         disposition: attachment.contentDisposition ?? "attachment",
         content_id: attachment.cid,
       })),
+    });
+    console.info("SendGrid accepted message", {
+      statusCode: response?.statusCode,
+      messageId: response?.headers?.["x-message-id"],
     });
     return { skipped: false };
   }

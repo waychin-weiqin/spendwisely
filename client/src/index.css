@@ -70,6 +70,19 @@
   }
 }
 
+/* Safe-area padding for iOS notch / dynamic island */
+.safe-area-top {
+  padding-top: max(env(safe-area-inset-top), 45px);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-bottom-pad {
+  padding-bottom: max(env(safe-area-inset-bottom), 18px);
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

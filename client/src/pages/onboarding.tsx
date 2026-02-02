@@ -112,7 +112,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 px-4 py-10 safe-area-top">
       <div className="mx-auto w-full max-w-5xl">
         <div className="relative overflow-hidden rounded-3xl border border-border/50 bg-white/80 shadow-xl shadow-black/10 backdrop-blur-sm">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_55%)]" />
