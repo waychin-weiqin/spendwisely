@@ -35,12 +35,39 @@ const extraOrigins = (process.env.CORS_ORIGINS || "")
   .map((origin) => origin.trim())
   .filter(Boolean);
 const allowedOrigins = new Set([...defaultAllowedOrigins, ...extraOrigins]);
+const isDev = process.env.NODE_ENV !== "production";
+const allowLocalNetwork = process.env.CORS_ALLOW_LOCAL_NETWORK === "true";
+const allowAllOrigins = process.env.CORS_ALLOW_ALL === "true";
+
+const isLocalNetworkOrigin = (origin: string) => {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+
+    if (host === "localhost" || host === "127.0.0.1") return true;
+    if (host.startsWith("10.")) return true;
+    if (host.startsWith("192.168.")) return true;
+
+    if (host.startsWith("172.")) {
+      const secondOctet = Number(host.split(".")[1]);
+      return secondOctet >= 16 && secondOctet <= 31;
+    }
+
+    return false;
+  } catch {
+    return false;
+  }
+};
 
 app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
+      if (allowLocalNetwork) return callback(null, true);
+      if (allowAllOrigins) return callback(null, true);
       if (allowedOrigins.has(origin)) return callback(null, true);
+      if ((isDev || allowLocalNetwork) && origin === "null") return callback(null, true);
+      if ((isDev || allowLocalNetwork) && isLocalNetworkOrigin(origin)) return callback(null, true);
       return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,

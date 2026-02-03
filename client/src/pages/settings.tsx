@@ -70,7 +70,7 @@ const personas = [
 
 export default function SettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { goals, isLoading, updateGoals, isUpdating } = useGoals({ enabled: !!user });
+  const { goals, isLoading, createGoals, isCreating, updateGoals, isUpdating } = useGoals({ enabled: !!user });
   const { settings, isLoading: settingsLoading, updateSettings, isUpdating: isUpdatingSettings } = useUserSettings();
   const [, setLocation] = useLocation();
   const [isSendingAllSummaries, setIsSendingAllSummaries] = useState(false);
@@ -139,7 +139,11 @@ export default function SettingsPage() {
   }
 
   const handleSubmit = (values: InsertGoal) => {
-    updateGoals(values);
+    if (goals) {
+      updateGoals(values);
+    } else {
+      createGoals(values);
+    }
   };
 
   const adminUiEnabled = import.meta.env.VITE_ENABLE_ADMIN_UI === "true";
@@ -277,7 +281,7 @@ export default function SettingsPage() {
               initialValues={mergedInitialValues}
               onSubmit={handleSubmit}
               submitLabel="Save changes"
-              isSubmitting={isUpdating}
+              isSubmitting={isUpdating || isCreating}
             />
           </CardContent>
         </Card>

@@ -70,7 +70,7 @@ const personas = [
 
 export default function OnboardingPage() {
   const { user, isLoading: authLoading } = useAuth();
-  const { goals, isLoading, createGoals, isCreating } = useGoals({ enabled: !!user });
+  const { goals, isLoading, createGoals, isCreating, updateGoals, isUpdating } = useGoals({ enabled: !!user });
   const [location, setLocation] = useLocation();
   const isRevisit = useMemo(() => {
     const search = location.split("?")[1] ?? "";
@@ -98,7 +98,8 @@ export default function OnboardingPage() {
   }, [goals, isRevisit, setLocation]);
 
   const handleSubmit = (values: InsertGoal) => {
-    createGoals(values, {
+    const mutate = goals ? updateGoals : createGoals;
+    mutate(values, {
       onSuccess: () => setLocation("/"),
     });
   };
@@ -240,7 +241,7 @@ export default function OnboardingPage() {
                       initialValues={selectedPersona?.defaults}
                       onSubmit={handleSubmit}
                       submitLabel="Save and continue"
-                      isSubmitting={isCreating}
+                      isSubmitting={isCreating || isUpdating}
                     />
                   </CardContent>
                 </Card>

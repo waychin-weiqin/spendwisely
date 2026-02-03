@@ -4,8 +4,8 @@ import { useGoals } from "@/hooks/use-goals";
 import { format, subDays, isSameMonth, isAfter, isBefore, startOfDay, startOfMonth, addMonths, endOfMonth } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Sidebar, MobileNav } from "@/components/layout/Sidebar";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { Loader2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, MapPin, Tag, Wallet, Banknote, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell } from "recharts";
+import { Loader2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon, MapPin, Tag, Wallet, Banknote, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
 import { CreateIncomeDialog } from "@/components/incomes/CreateIncomeDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -20,6 +20,16 @@ export default function Dashboard() {
   const { goals } = useGoals({ enabled: true });
   const [timeRange, setTimeRange] = useState("monthly");
   const [spentMonthOffset, setSpentMonthOffset] = useState(0);
+  const pieColors = [
+    "#2563eb",
+    "#06b6d4",
+    "#22c55e",
+    "#f59e0b",
+    "#f97316",
+    "#ef4444",
+    "#a855f7",
+    "#14b8a6",
+  ];
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -191,7 +201,10 @@ export default function Dashboard() {
             <DialogTrigger asChild>
               <Card className="border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-muted-foreground">This Month Spent</CardTitle>
+                  <CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                    This Month Spent
+                    <Info className="h-3.5 w-3.5 text-muted-foreground/60" />
+                  </CardTitle>
                   <DollarSign className="w-4 h-4 text-primary" />
                 </CardHeader>
                 <CardContent>
@@ -204,7 +217,7 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </DialogTrigger>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="max-w-xl rounded-2xl">
               <DialogHeader className="space-y-1">
                 <DialogTitle>Spending by category</DialogTitle>
                 <DialogDescription>{spentBreakdown.monthLabel}</DialogDescription>
@@ -212,26 +225,64 @@ export default function Dashboard() {
               <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
+                  aria-label="Previous month"
                   onClick={() => setSpentMonthOffset((prev) => prev + 1)}
                 >
-                  Previous month
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
                 <span className="text-sm text-muted-foreground">{spentBreakdown.monthLabel}</span>
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
+                  aria-label="Next month"
                   onClick={() => setSpentMonthOffset((prev) => Math.max(0, prev - 1))}
                   disabled={spentMonthOffset === 0}
                 >
-                  Next month
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
               {spentBreakdown.entries.length ? (
-                <div className="space-y-3">
-                  {spentBreakdown.entries.map((entry) => (
+                <div className="space-y-5">
+                  <div className="h-[220px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={spentBreakdown.entries}
+                          dataKey="amount"
+                          nameKey="category"
+                          innerRadius={60}
+                          outerRadius={90}
+                          paddingAngle={2}
+                        >
+                          {spentBreakdown.entries.map((entry, index) => (
+                            <Cell key={entry.category} fill={pieColors[index % pieColors.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: number, name: string) => [
+                            `$${Number(value).toFixed(2)}`,
+                            name,
+                          ]}
+                          contentStyle={{
+                            backgroundColor: "#ffffff",
+                            borderColor: "hsl(var(--border))",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                          }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  {spentBreakdown.entries.map((entry, index) => (
                     <div key={entry.category} className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
-                      <span className="text-sm font-medium text-foreground">{entry.category}</span>
+                      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                        />
+                        {entry.category}
+                      </span>
                       <span className="text-sm font-semibold text-foreground">
                         ${entry.amount.toFixed(0)}
                       </span>
