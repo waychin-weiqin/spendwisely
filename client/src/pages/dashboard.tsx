@@ -9,6 +9,7 @@ import { Loader2, TrendingUp, TrendingDown, DollarSign, Calendar as CalendarIcon
 import { CreateExpenseDialog } from "@/components/expenses/CreateExpenseDialog";
 import { CreateIncomeDialog } from "@/components/incomes/CreateIncomeDialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState, useMemo } from "react";
@@ -160,7 +161,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row safe-area-top">
+    <div className="min-h-screen box-border bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row safe-area-top">
       <Sidebar />
       
       <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1600px] mx-auto w-full animate-in">
@@ -217,87 +218,89 @@ export default function Dashboard() {
                 </CardContent>
               </Card>
             </DialogTrigger>
-            <DialogContent className="max-w-xl rounded-2xl">
-              <DialogHeader className="space-y-1">
+            <DialogContent className="max-w-xl rounded-2xl max-h-[85vh] overflow-hidden flex flex-col">
+              <DialogHeader className="space-y-1 shrink-0 border-b border-border/50 px-6 py-4 pr-12">
                 <DialogTitle>Spending by category</DialogTitle>
                 <DialogDescription>{spentBreakdown.monthLabel}</DialogDescription>
               </DialogHeader>
-              <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Previous month"
-                  onClick={() => setSpentMonthOffset((prev) => prev + 1)}
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <span className="text-sm text-muted-foreground">{spentBreakdown.monthLabel}</span>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  aria-label="Next month"
-                  onClick={() => setSpentMonthOffset((prev) => Math.max(0, prev - 1))}
-                  disabled={spentMonthOffset === 0}
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-              {spentBreakdown.entries.length ? (
-                <div className="space-y-5">
-                  <div className="h-[220px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={spentBreakdown.entries}
-                          dataKey="amount"
-                          nameKey="category"
-                          innerRadius={60}
-                          outerRadius={90}
-                          paddingAngle={2}
-                        >
-                          {spentBreakdown.entries.map((entry, index) => (
-                            <Cell key={entry.category} fill={pieColors[index % pieColors.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: number, name: string) => [
-                            `$${Number(value).toFixed(2)}`,
-                            name,
-                          ]}
-                          contentStyle={{
-                            backgroundColor: "#ffffff",
-                            borderColor: "hsl(var(--border))",
-                            borderRadius: "8px",
-                            boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-                          }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  {spentBreakdown.entries.map((entry, index) => (
-                    <div key={entry.category} className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
-                      <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: pieColors[index % pieColors.length] }}
-                        />
-                        {entry.category}
-                      </span>
-                      <span className="text-sm font-semibold text-foreground">
-                        ${entry.amount.toFixed(0)}
-                      </span>
+              <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-5">
+                <div className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Previous month"
+                    onClick={() => setSpentMonthOffset((prev) => prev + 1)}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">{spentBreakdown.monthLabel}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    aria-label="Next month"
+                    onClick={() => setSpentMonthOffset((prev) => Math.max(0, prev - 1))}
+                    disabled={spentMonthOffset === 0}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                {spentBreakdown.entries.length ? (
+                  <div className="space-y-5">
+                    <div className="h-[220px]">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={spentBreakdown.entries}
+                            dataKey="amount"
+                            nameKey="category"
+                            innerRadius={60}
+                            outerRadius={90}
+                            paddingAngle={2}
+                          >
+                            {spentBreakdown.entries.map((entry, index) => (
+                              <Cell key={entry.category} fill={pieColors[index % pieColors.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value: number, name: string) => [
+                              `$${Number(value).toFixed(2)}`,
+                              name,
+                            ]}
+                            contentStyle={{
+                              backgroundColor: "#ffffff",
+                              borderColor: "hsl(var(--border))",
+                              borderRadius: "8px",
+                              boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+                            }}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  ))}
-                  <div className="flex items-center justify-between pt-2 text-sm font-semibold">
-                    <span>Total</span>
-                    <span>${spentBreakdown.total.toFixed(0)}</span>
+                    {spentBreakdown.entries.map((entry, index) => (
+                      <div key={entry.category} className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
+                        <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+                          <span
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: pieColors[index % pieColors.length] }}
+                          />
+                          {entry.category}
+                        </span>
+                        <span className="text-sm font-semibold text-foreground">
+                          ${entry.amount.toFixed(0)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between pt-2 text-sm font-semibold">
+                      <span>Total</span>
+                      <span>${spentBreakdown.total.toFixed(0)}</span>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
-                  No expenses recorded for this month.
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-lg border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
+                    No expenses recorded for this month.
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
 
@@ -423,77 +426,84 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Recent Transactions */}
           <Card className="border-border/50 shadow-sm flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Transactions</CardTitle>
-              <CardDescription>Your latest 5 expenses.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              {recentExpenses.length > 0 ? (
-                <div className="space-y-4">
-                  {recentExpenses.map((expense) => (
-                    <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
-                      <div className="flex items-center gap-3">
+            <Tabs defaultValue="expenses" className="flex-1 flex flex-col">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg">Recent Activity</CardTitle>
+                  </div>
+                  <TabsList className="grid w-[210px] grid-cols-2">
+                    <TabsTrigger value="expenses" aria-label="Expenses">
+                      <DollarSign className="h-4 w-4 text-primary" />
+                    </TabsTrigger>
+                    <TabsTrigger value="income" aria-label="Income">
+                      <Banknote className="h-4 w-4 text-emerald-600" />
+                    </TabsTrigger>
+                  </TabsList>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-1 overflow-auto">
+                <TabsContent value="expenses" className="mt-0">
+                  {recentExpenses.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentExpenses.map((expense) => (
+                        <div key={expense.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
+                          <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                          <Tag className="w-4 h-4" />
+                          <DollarSign className="w-4 h-4" />
                         </div>
-                        <div>
-                          <p className="font-medium text-sm text-foreground">{expense.category}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {expense.location}</span>
+                            <div>
+                              <p className="font-medium text-sm text-foreground">{expense.category}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-0.5"><MapPin className="w-3 h-3" /> {expense.location}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-sm">-${Number(expense.amount).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(expense.date), "MMM d")}</p>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-sm">-${Number(expense.amount).toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">{format(new Date(expense.date), "MMM d")}</p>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-8">
-                  <p>No recent transactions</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card className="border-border/50 shadow-sm flex flex-col">
-            <CardHeader>
-              <CardTitle className="text-lg">Recent Income</CardTitle>
-              <CardDescription>Your latest 5 income entries.</CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 overflow-auto">
-              {recentIncomes.length > 0 ? (
-                <div className="space-y-4">
-                  {recentIncomes.map((income) => (
-                    <div key={income.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-                          <Banknote className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm text-foreground">{income.source}</p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-0.5"><CalendarIcon className="w-3 h-3" /> {format(new Date(income.date), "MMM d")}</span>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-8">
+                      <p>No recent transactions</p>
+                    </div>
+                  )}
+                </TabsContent>
+                <TabsContent value="income" className="mt-0">
+                  {recentIncomes.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentIncomes.map((income) => (
+                        <div key={income.id} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/50">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600">
+                              <Banknote className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm text-foreground">{income.source}</p>
+                              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className="flex items-center gap-0.5"><CalendarIcon className="w-3 h-3" /> {format(new Date(income.date), "MMM d")}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="font-bold text-sm text-emerald-600">+${Number(income.amount).toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">{income.remark || "—"}</p>
                           </div>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-bold text-sm text-emerald-600">+${Number(income.amount).toFixed(2)}</p>
-                        <p className="text-xs text-muted-foreground">{income.remark || "—"}</p>
-                      </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-8">
-                  <p>No recent income</p>
-                </div>
-              )}
-            </CardContent>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground py-8">
+                      <p>No recent income</p>
+                    </div>
+                  )}
+                </TabsContent>
+              </CardContent>
+            </Tabs>
           </Card>
         </div>
       </main>
