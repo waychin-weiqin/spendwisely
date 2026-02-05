@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { storage } from "../storage";
 import { generateMonthlySummary } from "../ai";
 import { sendEmail } from "../email";
-import type { Expense, Goal, User } from "@shared/schema";
+import type { Expense, Goal, Income, User } from "@shared/schema";
 import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 
 const TZ = "Australia/Melbourne";
@@ -30,6 +30,35 @@ function getCategoryTotals(expenses: Expense[]) {
 const chartWidth = 1400;
 const chartHeight = 800;
 const chartCanvas = new ChartJSNodeCanvas({ width: chartWidth, height: chartHeight, backgroundColour: "white" });
+
+const SUMMARY_PROMPT_INSTRUCTIONS = `
+Using the data below, write a concise monthly spending summary.
+
+Output format (use these exact labels, each on its own line):
+Headline: <one short sentence>
+TL;DR: <one sentence>
+Summary: <2-3 sentences>
+Biggest win: <one sentence>
+Watchlist: <one sentence, or "None this month">
+Optional next step: <one sentence, phrased as optional>
+
+Requirements:
+- Mention the biggest positive trend
+- Mention the biggest concern (if any)
+- Reference at least 3 concrete numbers
+- Maintain a supportive and neutral tone
+
+Based on the user's spending data and stated goal:
+- Assess whether the user is on track
+- Identify ONE high-impact adjustment
+- Phrase the suggestion as optional, not mandatory
+
+Constraints:
+- Do not suggest extreme changes
+- Do not mention categories that are already improving
+- Quantify the impact of the suggestion
+- Do not use bullet points
+`.trim();
 
 async function buildSpendingChart(expenses: Expense[]) {
   const totals = getCategoryTotals(expenses).slice(0, 6);
@@ -121,12 +150,26 @@ function computeSuccess(goal: Goal, totalSpent: number, categoryTotals: Map<stri
 
 function buildPrompt(params: {
   goal: Goal;
-  expenses: Expense[];
-  periodLabel: string;
-  totalSpent: number;
-  totalIncome: number;
+  current: {
+    periodLabel: string;
+    periodStart: Date;
+    periodEnd: Date;
+    expenses: Expense[];
+    incomes: Income[];
+    totalSpent: number;
+    totalIncome: number;
+  };
+  previous: {
+    periodLabel: string;
+    periodStart: Date;
+    periodEnd: Date;
+    expenses: Expense[];
+    incomes: Income[];
+    totalSpent: number;
+    totalIncome: number;
+  };
 }) {
-  const { goal, expenses, periodLabel, totalSpent, totalIncome } = params;
+  const { goal, current, previous } = params;
   const mainGoalLabels: Record<string, string> = {
     save_specific: "Save for a specific goal",
     reduce_spending: "Reduce overall spending",
@@ -141,56 +184,89 @@ function buildPrompt(params: {
     percent_income: "Percent of income saved",
     none: "No specific target",
   };
-  const categoryTotals = getCategoryTotals(expenses);
-  const categoryTotalsMap = new Map(categoryTotals.map((item) => [item.category, item.amount]));
-  const topCategories = categoryTotals.slice(0, 5);
-  const priorityTotals = categoryTotals.filter((item) =>
-    goal.priorityCategories.includes(item.category),
-  );
-  const remarks = expenses
-    .filter((expense) => expense.remark && expense.remark.trim().length > 0)
-    .map((expense) => `${expense.category} — ${expense.remark!.trim()}`);
 
-  const income = totalIncome;
-  const saved = income - totalSpent;
-  const savedRate = income > 0 ? (saved / income) * 100 : null;
+  const currentCategoryTotals = getCategoryTotals(current.expenses);
+  const currentCategoryTotalsMap = new Map(currentCategoryTotals.map((item) => [item.category, item.amount]));
+  const success = computeSuccess(goal, current.totalSpent, currentCategoryTotalsMap, current.totalIncome);
 
-  const success = computeSuccess(goal, totalSpent, categoryTotalsMap, totalIncome);
+  const structuredData = {
+    meta: {
+      timezone: TZ,
+      currentPeriod: {
+        label: current.periodLabel,
+        start: current.periodStart.toISOString(),
+        end: current.periodEnd.toISOString(),
+      },
+      previousPeriod: {
+        label: previous.periodLabel,
+        start: previous.periodStart.toISOString(),
+        end: previous.periodEnd.toISOString(),
+      },
+    },
+    goal: {
+      mainGoal: mainGoalLabels[goal.mainGoal] ?? goal.mainGoal,
+      successType: successTypeLabels[goal.successType] ?? goal.successType,
+      successAmount: goal.successAmount ?? null,
+      successCategory: goal.successCategory ?? null,
+      incomeMonthly: goal.incomeMonthly ? Number(goal.incomeMonthly) : null,
+      priorityCategories: goal.priorityCategories,
+      strictness: goal.strictness,
+      successCheck: success.message,
+    },
+    currentMonth: {
+      totals: {
+        totalSpent: Number(current.totalSpent.toFixed(2)),
+        totalIncome: Number(current.totalIncome.toFixed(2)),
+        totalExpensesCount: current.expenses.length,
+        totalIncomesCount: current.incomes.length,
+      },
+      expenses: current.expenses.map((expense) => ({
+        id: expense.id,
+        category: expense.category,
+        amount: Number(expense.amount),
+        date: new Date(expense.date).toISOString(),
+        location: expense.location ?? null,
+        remark: expense.remark ?? null,
+        taxReducible: expense.taxReducible ?? null,
+      })),
+      incomes: current.incomes.map((income) => ({
+        id: income.id,
+        source: income.source ?? null,
+        amount: Number(income.amount),
+        date: new Date(income.date).toISOString(),
+        remark: income.remark ?? null,
+      })),
+    },
+    previousMonth: {
+      totals: {
+        totalSpent: Number(previous.totalSpent.toFixed(2)),
+        totalIncome: Number(previous.totalIncome.toFixed(2)),
+        totalExpensesCount: previous.expenses.length,
+        totalIncomesCount: previous.incomes.length,
+      },
+      expenses: previous.expenses.map((expense) => ({
+        id: expense.id,
+        category: expense.category,
+        amount: Number(expense.amount),
+        date: new Date(expense.date).toISOString(),
+        location: expense.location ?? null,
+        remark: expense.remark ?? null,
+        taxReducible: expense.taxReducible ?? null,
+      })),
+      incomes: previous.incomes.map((income) => ({
+        id: income.id,
+        source: income.source ?? null,
+        amount: Number(income.amount),
+        date: new Date(income.date).toISOString(),
+        remark: income.remark ?? null,
+      })),
+    },
+  };
 
-  return `
-You are an empathetic financial coach. Write a concise monthly spending summary for ${periodLabel}.
+  return `${SUMMARY_PROMPT_INSTRUCTIONS}
 
-User goal:
-- Main goal: ${mainGoalLabels[goal.mainGoal] ?? goal.mainGoal}
-- Success type: ${successTypeLabels[goal.successType] ?? goal.successType}
-- Success amount: ${goal.successAmount ?? "N/A"}
-- Success category: ${goal.successCategory ?? "N/A"}
-- Base monthly income: ${goal.incomeMonthly ? Number(goal.incomeMonthly).toFixed(2) : "N/A"}
-- Extra incomes logged: ${(totalIncome - (goal.incomeMonthly ? Number(goal.incomeMonthly) : 0)).toFixed(2)}
-- Total income for month: ${totalIncome.toFixed(2)}
-- Priority categories: ${goal.priorityCategories.join(", ")}
-- Strictness: ${goal.strictness}
-
-Spending data:
-- Total spent: ${totalSpent.toFixed(2)}
-- Number of expenses: ${expenses.length}
-- Saved (income - spent): ${saved.toFixed(2)}
-- Savings rate: ${savedRate !== null ? savedRate.toFixed(1) + "%" : "N/A"}
-- Top categories: ${topCategories.map((c) => `${c.category} ${c.amount.toFixed(2)}`).join(", ")}
-- Priority categories spend: ${priorityTotals.map((c) => `${c.category} ${c.amount.toFixed(2)}`).join(", ") || "N/A"}
-- Success check: ${success.message}
-- User remarks: ${remarks.length ? remarks.slice(0, 8).join("; ") : "None"}
-
-Guidelines:
-- Keep it under 180 words.
-- Use 3 short sections with labels: "Summary:", "Highlights:", "Next steps:".
-- If goal met, congratulate clearly in Summary.
-- If goal missed, give 1-2 specific actions in Next steps.
-- Mention priority categories with respect (no shaming).
-- Match tone to strictness (strict = direct, balanced = gentle, flexible = insight-only).
-- Weave in any user remarks to personalize (if relevant).
-- Use plain text, no emojis.
-`.trim();
+Data:
+${JSON.stringify(structuredData, null, 2)}`;
 }
 
 function getLastMonthPeriod() {
@@ -199,6 +275,14 @@ function getLastMonthPeriod() {
   const periodEnd = now.minus({ months: 1 }).endOf("month");
   const periodLabel = periodStart.toFormat("LLLL yyyy");
   return { now, periodStart, periodEnd, periodLabel };
+}
+
+function getPreviousMonthPeriod() {
+  const now = DateTime.now().setZone(TZ);
+  const periodStart = now.minus({ months: 2 }).startOf("month");
+  const periodEnd = now.minus({ months: 2 }).endOf("month");
+  const periodLabel = periodStart.toFormat("LLLL yyyy");
+  return { periodStart, periodEnd, periodLabel };
 }
 
 export async function generateAndEmailSummaryForUser(
@@ -218,6 +302,7 @@ export async function generateAndEmailSummaryForUser(
   }
 
   const { periodStart, periodEnd, periodLabel } = getLastMonthPeriod();
+  const previousPeriod = getPreviousMonthPeriod();
   const existing = await storage.getMonthlySummary(
     user.id,
     periodStart.toJSDate(),
@@ -239,8 +324,42 @@ export async function generateAndEmailSummaryForUser(
   const baseIncome = goal.incomeMonthly ? Number(goal.incomeMonthly) : 0;
   const totalIncome = baseIncome + extraIncome;
 
+  const previousExpenses = await storage.getExpensesForRange(
+    user.id,
+    previousPeriod.periodStart.toJSDate(),
+    previousPeriod.periodEnd.toJSDate(),
+  );
+  const previousIncomes = await storage.getIncomesForRange(
+    user.id,
+    previousPeriod.periodStart.toJSDate(),
+    previousPeriod.periodEnd.toJSDate(),
+  );
+  const previousTotalSpent = previousExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const previousExtraIncome = previousIncomes.reduce((sum, income) => sum + Number(income.amount), 0);
+  const previousTotalIncome = baseIncome + previousExtraIncome;
+
   const generatedSummary = await generateMonthlySummary(
-    buildPrompt({ goal, expenses, periodLabel, totalSpent, totalIncome }),
+    buildPrompt({
+      goal,
+      current: {
+        periodLabel,
+        periodStart: periodStart.toJSDate(),
+        periodEnd: periodEnd.toJSDate(),
+        expenses,
+        incomes,
+        totalSpent,
+        totalIncome,
+      },
+      previous: {
+        periodLabel: previousPeriod.periodLabel,
+        periodStart: previousPeriod.periodStart.toJSDate(),
+        periodEnd: previousPeriod.periodEnd.toJSDate(),
+        expenses: previousExpenses,
+        incomes: previousIncomes,
+        totalSpent: previousTotalSpent,
+        totalIncome: previousTotalIncome,
+      },
+    }),
   );
 
   const savedSummary = existing
@@ -255,6 +374,10 @@ export async function generateAndEmailSummaryForUser(
       });
 
   const summary = savedSummary.summary;
+  const savedAmount = totalIncome - totalSpent;
+  const previousSavedAmount = previousTotalIncome - previousTotalSpent;
+  const spentDelta = totalSpent - previousTotalSpent;
+  const spentDeltaPct = previousTotalSpent > 0 ? (spentDelta / previousTotalSpent) * 100 : null;
 
   const plainSummary = summary.replace(/\*\*/g, "");
   const emailBody = [
@@ -270,10 +393,18 @@ export async function generateAndEmailSummaryForUser(
   ].join("\n");
 
   const htmlSummary = summary
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/^Summary:/gm, "<strong>Summary:</strong>")
-    .replace(/^Highlights:/gm, "<strong>Highlights:</strong>")
-    .replace(/^Next steps:/gm, "<strong>Next steps:</strong>");
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const match = line.match(/^([A-Za-z][A-Za-z\s]+):\s*(.*)$/);
+      if (match) {
+        const [, label, value] = match;
+        return `<p style="margin: 0 0 10px;"><strong>${label}:</strong> ${value}</p>`;
+      }
+      return `<p style="margin: 0 0 10px;">${line}</p>`;
+    })
+    .join("");
 
   const emailHtml = `
 <div style="font-family: 'Inter', Arial, sans-serif; background: #f8fafc; padding: 24px;">
@@ -285,8 +416,25 @@ export async function generateAndEmailSummaryForUser(
     <div style="padding: 24px;">
       <p style="margin-top: 0;">Hi ${user.username},</p>
       <p>Here’s your personalized spending summary:</p>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0 20px;">
+        <div style="background:#f8fafc; border-radius: 12px; padding: 12px 14px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Total spent</p>
+          <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: #0f172a;">${formatCurrency(totalSpent)}</p>
+        </div>
+        <div style="background:#f8fafc; border-radius: 12px; padding: 12px 14px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Saved</p>
+          <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: #0f172a;">${formatCurrency(savedAmount)}</p>
+        </div>
+        <div style="background:#f8fafc; border-radius: 12px; padding: 12px 14px; border: 1px solid #e2e8f0;">
+          <p style="margin: 0; font-size: 12px; color: #64748b;">Spent vs last month</p>
+          <p style="margin: 6px 0 0; font-size: 18px; font-weight: 700; color: ${spentDelta <= 0 ? "#16a34a" : "#dc2626"};">
+            ${spentDelta <= 0 ? "↓" : "↑"} ${formatCurrency(Math.abs(spentDelta))}
+            ${spentDeltaPct !== null ? ` (${spentDeltaPct <= 0 ? "" : "+"}${spentDeltaPct.toFixed(1)}%)` : ""}
+          </p>
+        </div>
+      </div>
       <div style="background:#f1f5f9; border-radius: 12px; padding: 16px; line-height: 1.5;">
-        ${htmlSummary.replace(/\n/g, "<br />")}
+        ${htmlSummary}
       </div>
       <div style="margin-top: 20px; text-align: center;">
         <img src="cid:spending-chart" alt="Spending breakdown chart" style="width: 100%; max-width: 700px; border-radius: 12px; border: 1px solid #e2e8f0;" />

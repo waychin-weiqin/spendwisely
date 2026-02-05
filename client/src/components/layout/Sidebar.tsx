@@ -86,35 +86,37 @@ export function MobileNav() {
   const { logout } = useAuth();
   
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-lg border-t border-border z-50 px-8 pt-3 safe-area-bottom-pad flex justify-between items-center">
-      <Link href="/">
-        <div className={cn("flex flex-col items-center gap-1", location === "/" ? "text-primary" : "text-muted-foreground")}>
-          <LayoutDashboard className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Home</span>
-        </div>
-      </Link>
-      <Link href="/expenses">
-        <div className={cn("flex flex-col items-center gap-1", location === "/expenses" ? "text-primary" : "text-muted-foreground")}>
-          <Receipt className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Expenses</span>
-        </div>
-      </Link>
-      <Link href="/incomes">
-        <div className={cn("flex flex-col items-center gap-1", location === "/incomes" ? "text-primary" : "text-muted-foreground")}>
-          <Banknote className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Income</span>
-        </div>
-      </Link>
-      <Link href="/settings">
-        <div className={cn("flex flex-col items-center gap-1", location === "/settings" ? "text-primary" : "text-muted-foreground")}>
-          <Settings className="w-6 h-6" />
-          <span className="text-[10px] font-medium">Settings</span>
-        </div>
-      </Link>
-      <button onClick={() => logout()} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-destructive">
-        <LogOut className="w-6 h-6" />
-        <span className="text-[10px] font-medium">Logout</span>
-      </button>
+    <div className="md:hidden fixed left-0 right-0 z-50 bottom-[calc(env(safe-area-inset-bottom)+12px)] px-4">
+      <div className="bg-background/95 backdrop-blur-xl border border-border rounded-2xl shadow-lg shadow-black/10 px-6 py-3 flex justify-between items-center">
+        <Link href="/">
+          <div className={cn("flex flex-col items-center gap-1", location === "/" ? "text-primary" : "text-muted-foreground")}>
+            <LayoutDashboard className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Home</span>
+          </div>
+        </Link>
+        <Link href="/expenses">
+          <div className={cn("flex flex-col items-center gap-1", location === "/expenses" ? "text-primary" : "text-muted-foreground")}>
+            <Receipt className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Expenses</span>
+          </div>
+        </Link>
+        <Link href="/incomes">
+          <div className={cn("flex flex-col items-center gap-1", location === "/incomes" ? "text-primary" : "text-muted-foreground")}>
+            <Banknote className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Income</span>
+          </div>
+        </Link>
+        <Link href="/settings">
+          <div className={cn("flex flex-col items-center gap-1", location === "/settings" ? "text-primary" : "text-muted-foreground")}>
+            <Settings className="w-6 h-6" />
+            <span className="text-[10px] font-medium">Settings</span>
+          </div>
+        </Link>
+        <button onClick={() => logout()} className="flex flex-col items-center gap-1 text-muted-foreground hover:text-destructive">
+          <LogOut className="w-6 h-6" />
+          <span className="text-[10px] font-medium">Logout</span>
+        </button>
+      </div>
     </div>
   );
 }

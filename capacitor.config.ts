@@ -1,6 +1,6 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
-const serverUrl = process.env.CAPACITOR_SERVER_URL;
+const serverUrl = 'https://gracelessly-unresonating-milania.ngrok-free.dev';
 
 const config: CapacitorConfig = {
   appId: 'com.spendwisely.app',

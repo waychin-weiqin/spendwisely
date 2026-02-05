@@ -190,7 +190,7 @@ export default function SettingsPage() {
     <div className="min-h-screen box-border bg-slate-50 dark:bg-slate-950 flex flex-col md:flex-row safe-area-top">
       <Sidebar />
 
-      <main className="flex-1 md:ml-64 p-4 md:p-8 pb-24 md:pb-8 max-w-[1400px] mx-auto w-full animate-in">
+      <main className="flex-1 md:ml-64 p-4 md:p-8 pb-[calc(env(safe-area-inset-bottom)+120px)] md:pb-8 max-w-[1400px] mx-auto w-full animate-in">
         <header className="relative mb-10 overflow-hidden rounded-3xl border border-border/50 bg-white/80 px-6 py-7 shadow-xl shadow-black/5 backdrop-blur-sm md:px-8">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(148,163,184,0.25),_transparent_55%)]" />
           <div className="absolute -right-16 -top-20 h-40 w-40 rounded-full bg-gradient-to-br from-slate-400/25 via-zinc-300/20 to-transparent blur-3xl" />
