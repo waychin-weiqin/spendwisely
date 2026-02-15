@@ -9,6 +9,10 @@
     "start": "NODE_ENV=production node dist/index.cjs",
     "check": "tsc",
     "db:push": "drizzle-kit push",
+    "db:backup": "tsx scripts/migrate-database.ts backup",
+    "db:restore": "tsx scripts/migrate-database.ts restore",
+    "db:migrate-to": "tsx scripts/migrate-database.ts migrate",
+    "db:verify": "tsx scripts/migrate-database.ts verify",
     "ios": "npx cap run ios -l --host=127.0.0.1 --port=5001"
   },
   "dependencies": {
