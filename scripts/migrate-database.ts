@@ -13,7 +13,17 @@
 
 import { execSync } from "child_process";
 import { existsSync, mkdirSync } from "fs";
-import { join } from "path";
+import { join, resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import { config } from "dotenv";
+
+// Get the project root directory (parent of scripts/)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+const projectRoot = resolve(__dirname, "..");
+
+// Load environment variables from .env file in project root
+config({ path: join(projectRoot, ".env") });
 
 const BACKUP_DIR = join(process.cwd(), "backups");
 
