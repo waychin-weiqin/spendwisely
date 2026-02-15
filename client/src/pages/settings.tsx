@@ -7,6 +7,7 @@ import { useUserSettings } from "@/hooks/use-user-settings";
 import { GoalForm } from "@/components/goals/GoalForm";
 import { useGoals } from "@/hooks/use-goals";
 import { useAuth } from "@/hooks/use-auth";
+import { BudgetManager } from "@/components/budgets/BudgetManager";
 import { BadgeCheck, Briefcase, GraduationCap, HeartHandshake, Loader2 } from "lucide-react";
 import type { InsertGoal } from "@shared/schema";
 import { Link, useLocation } from "wouter";
@@ -312,6 +313,36 @@ export default function SettingsPage() {
                 disabled={isUpdatingSettings}
               />
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/50 shadow-xl shadow-black/5 bg-card/90 backdrop-blur-sm mb-8 rounded-2xl">
+          <CardHeader>
+            <CardTitle>Budget tracking</CardTitle>
+            <CardDescription>
+              Set spending limits for specific categories and time periods.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border border-border/50 p-4">
+              <div>
+                <p className="font-medium text-sm text-foreground">Enable budgets</p>
+                <p className="text-xs text-muted-foreground">
+                  Track spending against category-specific limits
+                </p>
+              </div>
+              <Switch
+                checked={settings?.budgetEnabled ?? false}
+                onCheckedChange={(checked) => updateSettings({ budgetEnabled: checked })}
+                disabled={isUpdatingSettings}
+              />
+            </div>
+
+            {settings?.budgetEnabled && (
+              <div className="mt-4">
+                <BudgetManager />
+              </div>
+            )}
           </CardContent>
         </Card>
 

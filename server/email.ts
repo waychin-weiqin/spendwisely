@@ -1,5 +1,5 @@
 import nodemailer from "nodemailer";
-import sgMail from "@sendgrid/mail";
+import { Resend } from "resend";
 
 type EmailPayload = {
   to: string;
@@ -34,29 +34,45 @@ function getTransport() {
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<{ skipped: boolean }> {
-  const sendgridKey = process.env.SENDGRID_API_KEY;
-  const sendgridFrom = process.env.SENDGRID_FROM;
-  if (sendgridKey && sendgridFrom) {
-    sgMail.setApiKey(sendgridKey);
-    const [response] = await sgMail.send({
-      to: payload.to,
-      from: sendgridFrom,
-      subject: payload.subject,
-      text: payload.text,
-      html: payload.html,
-      attachments: payload.attachments?.map((attachment) => ({
-        content: attachment.content.toString("base64"),
-        filename: attachment.filename,
-        type: attachment.contentType,
-        disposition: attachment.contentDisposition ?? "attachment",
-        content_id: attachment.cid,
-      })),
-    });
-    console.info("SendGrid accepted message", {
-      statusCode: response?.statusCode,
-      messageId: response?.headers?.["x-message-id"],
-    });
-    return { skipped: false };
+  const resendKey = process.env.RESEND_API_KEY;
+  const resendFrom = process.env.RESEND_FROM;
+
+  // Try Resend API first if configured
+  if (resendKey && resendFrom) {
+    try {
+      const resend = new Resend(resendKey);
+      const response = await resend.emails.send({
+        to: payload.to,
+        from: resendFrom,
+        subject: payload.subject,
+        text: payload.text,
+        html: payload.html,
+        attachments: payload.attachments?.map((attachment) => ({
+          content: attachment.content,
+          filename: attachment.filename,
+        })),
+      });
+
+      // Log full response for debugging
+      console.log("Resend API full response:", JSON.stringify(response, null, 2));
+
+      if (response.error) {
+        console.error("Resend API error:", response.error);
+        console.warn("Resend failed, attempting to fall back to SMTP...");
+      } else if (response.data?.id) {
+        console.info("Resend API sent email successfully", {
+          messageId: response.data.id,
+          to: payload.to,
+          subject: payload.subject,
+        });
+        return { skipped: false };
+      } else {
+        console.warn("Resend returned success but no message ID, falling back to SMTP...");
+      }
+    } catch (error) {
+      console.error("Resend API exception:", error);
+      console.warn("Resend failed, attempting to fall back to SMTP...");
+    }
   }
 
   const transporter = getTransport();
@@ -70,13 +86,19 @@ export async function sendEmail(payload: EmailPayload): Promise<{ skipped: boole
   }
 
   const from = process.env.SMTP_FROM || "no-reply@example.com";
-  await transporter.sendMail({
+  const info = await transporter.sendMail({
     from,
     to: payload.to,
     subject: payload.subject,
     text: payload.text,
     html: payload.html,
     attachments: payload.attachments,
+  });
+
+  console.info("SMTP sent email successfully", {
+    messageId: info.messageId,
+    to: payload.to,
+    subject: payload.subject,
   });
 
   return { skipped: false };

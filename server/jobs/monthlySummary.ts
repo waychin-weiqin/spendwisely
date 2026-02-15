@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { storage } from "../storage";
 import { generateMonthlySummary } from "../ai";
 import { sendEmail } from "../email";
-import type { Expense, Goal, Income, User } from "@shared/schema";
+import type { Expense, Goal, Income, User, Budget } from "@shared/schema";
 import { ChartJSNodeCanvas } from "chartjs-node-canvas";
 
 const TZ = "Australia/Melbourne";
@@ -27,6 +27,42 @@ function getCategoryTotals(expenses: Expense[]) {
     .sort((a, b) => b.amount - a.amount);
 }
 
+function calculateBudgetStatus(budget: Budget, expenses: Expense[], periodStart: Date, periodEnd: Date) {
+  const spent = expenses
+    .filter((expense) => {
+      const expenseDate = new Date(expense.date);
+      return (
+        expense.category === budget.category &&
+        expenseDate >= periodStart &&
+        expenseDate <= periodEnd
+      );
+    })
+    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+
+  const budgetAmount = Number(budget.amount);
+  const remaining = budgetAmount - spent;
+  const percentage = budgetAmount > 0 ? (spent / budgetAmount) * 100 : 0;
+
+  let status: "safe" | "warning" | "danger";
+  if (percentage >= 100) {
+    status = "danger";
+  } else if (percentage >= 80) {
+    status = "warning";
+  } else {
+    status = "safe";
+  }
+
+  return {
+    category: budget.category,
+    period: budget.period,
+    budgetAmount,
+    spent,
+    remaining,
+    percentage,
+    status,
+  };
+}
+
 const chartWidth = 1400;
 const chartHeight = 800;
 const chartCanvas = new ChartJSNodeCanvas({ width: chartWidth, height: chartHeight, backgroundColour: "white" });
@@ -47,9 +83,11 @@ Requirements:
 - Mention the biggest concern (if any)
 - Reference at least 3 concrete numbers
 - Maintain a supportive and neutral tone
+- If budgets are enabled and set, comment on budget adherence
 
-Based on the user's spending data and stated goal:
+Based on the user's spending data, budgets (if enabled), and stated goal:
 - Assess whether the user is on track
+- Highlight any budget concerns (categories approaching or exceeding limits)
 - Identify ONE high-impact adjustment
 - Phrase the suggestion as optional, not mandatory
 
@@ -150,6 +188,8 @@ function computeSuccess(goal: Goal, totalSpent: number, categoryTotals: Map<stri
 
 function buildPrompt(params: {
   goal: Goal;
+  budgets: Budget[];
+  budgetEnabled: boolean;
   current: {
     periodLabel: string;
     periodStart: Date;
@@ -169,7 +209,7 @@ function buildPrompt(params: {
     totalIncome: number;
   };
 }) {
-  const { goal, current, previous } = params;
+  const { goal, budgets, budgetEnabled, current, previous } = params;
   const mainGoalLabels: Record<string, string> = {
     save_specific: "Save for a specific goal",
     reduce_spending: "Reduce overall spending",
@@ -188,6 +228,15 @@ function buildPrompt(params: {
   const currentCategoryTotals = getCategoryTotals(current.expenses);
   const currentCategoryTotalsMap = new Map(currentCategoryTotals.map((item) => [item.category, item.amount]));
   const success = computeSuccess(goal, current.totalSpent, currentCategoryTotalsMap, current.totalIncome);
+
+  // Calculate budget statuses for monthly budgets only (since this is a monthly summary)
+  const monthlyBudgets = budgets.filter((b) => b.enabled && b.period === "monthly");
+  const currentBudgetStatuses = monthlyBudgets.map((budget) =>
+    calculateBudgetStatus(budget, current.expenses, current.periodStart, current.periodEnd)
+  );
+  const previousBudgetStatuses = monthlyBudgets.map((budget) =>
+    calculateBudgetStatus(budget, previous.expenses, previous.periodStart, previous.periodEnd)
+  );
 
   const structuredData = {
     meta: {
@@ -212,6 +261,28 @@ function buildPrompt(params: {
       priorityCategories: goal.priorityCategories,
       strictness: goal.strictness,
       successCheck: success.message,
+    },
+    budgets: {
+      enabled: budgetEnabled,
+      monthlyBudgets: currentBudgetStatuses.map((status) => ({
+        category: status.category,
+        budgetAmount: status.budgetAmount,
+        spent: status.spent,
+        remaining: status.remaining,
+        percentage: Number(status.percentage.toFixed(1)),
+        status: status.status,
+      })),
+      budgetComparison: currentBudgetStatuses.map((currentStatus, index) => {
+        const previousStatus = previousBudgetStatuses[index];
+        return {
+          category: currentStatus.category,
+          currentSpent: currentStatus.spent,
+          previousSpent: previousStatus.spent,
+          change: currentStatus.spent - previousStatus.spent,
+          currentStatus: currentStatus.status,
+          previousStatus: previousStatus.status,
+        };
+      }),
     },
     currentMonth: {
       totals: {
@@ -301,6 +372,9 @@ export async function generateAndEmailSummaryForUser(
     return { sent: false, reason: "Goals not set" };
   }
 
+  const budgets = await storage.getBudgets(user.id);
+  const budgetEnabled = user.budgetEnabled ?? false;
+
   const { periodStart, periodEnd, periodLabel } = getLastMonthPeriod();
   const previousPeriod = getPreviousMonthPeriod();
   const existing = await storage.getMonthlySummary(
@@ -341,6 +415,8 @@ export async function generateAndEmailSummaryForUser(
   const generatedSummary = await generateMonthlySummary(
     buildPrompt({
       goal,
+      budgets,
+      budgetEnabled,
       current: {
         periodLabel,
         periodStart: periodStart.toJSDate(),
@@ -465,6 +541,9 @@ export async function generateAndEmailSummaryForUser(
 
   if (!sendResult.skipped && savedSummary.id) {
     await storage.markMonthlySummaryEmailed(savedSummary.id);
+    console.info(`✅ Monthly summary email sent to ${user.email} for ${periodLabel}`);
+  } else {
+    console.warn(`⚠️ Monthly summary email skipped for ${user.email} - no email service configured`);
   }
 
   return {

@@ -1,4 +1,4 @@
-import { users, expenses, incomes, goals, passwordResets, monthlySummaries, type User, type InsertUser, type Expense, type InsertExpense, type Income, type InsertIncome, type Goal, type InsertGoal, type PasswordReset, type MonthlySummary } from "@shared/schema";
+import { users, expenses, incomes, goals, passwordResets, monthlySummaries, budgets, type User, type InsertUser, type Expense, type InsertExpense, type Income, type InsertIncome, type Goal, type InsertGoal, type PasswordReset, type MonthlySummary, type Budget, type InsertBudget } from "@shared/schema";
 import { db, pool } from "./db";
 import { eq, desc, and, gte, lte, isNull } from "drizzle-orm";
 import session from "express-session";
@@ -14,7 +14,14 @@ export interface IStorage {
   updateUserPassword(userId: number, password: string): Promise<User>;
   getAllUsers(): Promise<User[]>;
   updateUserSummaryEnabled(userId: number, summaryEnabled: boolean): Promise<User>;
-  
+  updateUserSettings(userId: number, settings: { summaryEnabled?: boolean; budgetEnabled?: boolean }): Promise<User>;
+
+  getBudgets(userId: number): Promise<Budget[]>;
+  getBudget(id: number, userId: number): Promise<Budget | undefined>;
+  createBudget(userId: number, budget: InsertBudget): Promise<Budget>;
+  updateBudget(id: number, userId: number, budget: InsertBudget): Promise<Budget>;
+  deleteBudget(id: number, userId: number): Promise<void>;
+
   createExpense(userId: number, expense: InsertExpense): Promise<Expense>;
   updateExpense(id: number, userId: number, expense: InsertExpense): Promise<Expense>;
   getExpenses(userId: number): Promise<Expense[]>;
@@ -90,6 +97,62 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+
+  async updateUserSettings(userId: number, settings: { summaryEnabled?: boolean; budgetEnabled?: boolean }): Promise<User> {
+    const updateData: any = {};
+    if (settings.summaryEnabled !== undefined) {
+      updateData.summaryEnabled = settings.summaryEnabled;
+    }
+    if (settings.budgetEnabled !== undefined) {
+      updateData.budgetEnabled = settings.budgetEnabled;
+    }
+
+    const [user] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
+  }
+
+  async getBudgets(userId: number): Promise<Budget[]> {
+    return await db
+      .select()
+      .from(budgets)
+      .where(eq(budgets.userId, userId))
+      .orderBy(budgets.category);
+  }
+
+  async getBudget(id: number, userId: number): Promise<Budget | undefined> {
+    const [budget] = await db
+      .select()
+      .from(budgets)
+      .where(and(eq(budgets.id, id), eq(budgets.userId, userId)));
+    return budget;
+  }
+
+  async createBudget(userId: number, insertBudget: InsertBudget): Promise<Budget> {
+    const [budget] = await db
+      .insert(budgets)
+      .values({ ...insertBudget, userId })
+      .returning();
+    return budget;
+  }
+
+  async updateBudget(id: number, userId: number, insertBudget: InsertBudget): Promise<Budget> {
+    const [budget] = await db
+      .update(budgets)
+      .set({ ...insertBudget, updatedAt: new Date() })
+      .where(and(eq(budgets.id, id), eq(budgets.userId, userId)))
+      .returning();
+    return budget;
+  }
+
+  async deleteBudget(id: number, userId: number): Promise<void> {
+    await db
+      .delete(budgets)
+      .where(and(eq(budgets.id, id), eq(budgets.userId, userId)));
   }
 
   async createExpense(userId: number, insertExpense: InsertExpense): Promise<Expense> {

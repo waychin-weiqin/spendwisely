@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
-import { expenses, incomes } from "@shared/schema";
+import { expenses, incomes, budgets } from "@shared/schema";
 import { db, pool } from "./db";
 import { runMonthlySummaryNow, generateAndEmailSummaryForUser } from "./jobs/monthlySummary";
 
@@ -181,6 +181,65 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  // Budget routes
+  app.get(api.budgets.list.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const budgetsList = await storage.getBudgets(req.user!.id);
+    res.json(budgetsList);
+  });
+
+  app.post(api.budgets.create.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    try {
+      const input = api.budgets.create.input.parse(req.body);
+      const budget = await storage.createBudget(req.user!.id, input);
+      res.status(201).json(budget);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.patch(api.budgets.update.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const id = parseInt(req.params.id);
+    try {
+      const input = api.budgets.update.input.parse(req.body);
+      const [budget] = await db.select().from(budgets).where(eq(budgets.id, id));
+      if (!budget || budget.userId !== req.user!.id) {
+        return res.status(404).json({ message: "Budget not found" });
+      }
+      const updated = await storage.updateBudget(id, req.user!.id, input);
+      res.status(200).json(updated);
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: err.errors[0].message,
+          field: err.errors[0].path.join('.'),
+        });
+      }
+      throw err;
+    }
+  });
+
+  app.delete(api.budgets.delete.path, async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const id = parseInt(req.params.id);
+
+    const [budget] = await db.select().from(budgets).where(eq(budgets.id, id));
+    if (!budget || budget.userId !== req.user!.id) {
+      return res.status(404).json({ message: "Budget not found" });
+    }
+
+    await storage.deleteBudget(id, req.user!.id);
+    res.sendStatus(204);
+  });
+
   app.get(api.userSettings.get.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const user = await storage.getUser(req.user!.id);
@@ -188,16 +247,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     res.json({
       email: user.email,
       summaryEnabled: user.summaryEnabled,
+      budgetEnabled: user.budgetEnabled || false,
     });
   });
 
   app.patch(api.userSettings.update.path, async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const input = api.userSettings.update.input.parse(req.body);
-    const user = await storage.updateUserSummaryEnabled(req.user!.id, input.summaryEnabled);
+    const user = await storage.updateUserSettings(req.user!.id, input);
     res.json({
       email: user.email,
       summaryEnabled: user.summaryEnabled,
+      budgetEnabled: user.budgetEnabled || false,
     });
   });
 

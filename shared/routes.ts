@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { insertUserSchema, insertExpenseSchema, insertIncomeSchema, insertGoalSchema, userPublicSchema, expenses, goals, incomes } from "./schema";
+import { insertUserSchema, insertExpenseSchema, insertIncomeSchema, insertGoalSchema, insertBudgetSchema, userPublicSchema, expenses, goals, incomes, budgets } from "./schema";
 
 export const errorSchemas = {
   validation: z.object({
@@ -83,6 +83,7 @@ export const api = {
         200: z.object({
           email: z.string().email(),
           summaryEnabled: z.boolean(),
+          budgetEnabled: z.boolean(),
         }),
       },
     },
@@ -90,12 +91,14 @@ export const api = {
       method: "PATCH" as const,
       path: "/api/user/settings",
       input: z.object({
-        summaryEnabled: z.boolean(),
+        summaryEnabled: z.boolean().optional(),
+        budgetEnabled: z.boolean().optional(),
       }),
       responses: {
         200: z.object({
           email: z.string().email(),
           summaryEnabled: z.boolean(),
+          budgetEnabled: z.boolean(),
         }),
       },
     },
@@ -200,6 +203,42 @@ export const api = {
       responses: {
         200: z.custom<typeof goals.$inferSelect>(),
         400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+  },
+  budgets: {
+    list: {
+      method: "GET" as const,
+      path: "/api/budgets",
+      responses: {
+        200: z.array(z.custom<typeof budgets.$inferSelect>()),
+      },
+    },
+    create: {
+      method: "POST" as const,
+      path: "/api/budgets",
+      input: insertBudgetSchema,
+      responses: {
+        201: z.custom<typeof budgets.$inferSelect>(),
+        400: errorSchemas.validation,
+      },
+    },
+    update: {
+      method: "PATCH" as const,
+      path: "/api/budgets/:id",
+      input: insertBudgetSchema,
+      responses: {
+        200: z.custom<typeof budgets.$inferSelect>(),
+        400: errorSchemas.validation,
+        404: errorSchemas.notFound,
+      },
+    },
+    delete: {
+      method: "DELETE" as const,
+      path: "/api/budgets/:id",
+      responses: {
+        204: z.void(),
         404: errorSchemas.notFound,
       },
     },

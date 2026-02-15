@@ -16,7 +16,7 @@ export function useUserSettings() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (payload: { summaryEnabled: boolean }) => {
+    mutationFn: async (payload: { summaryEnabled?: boolean; budgetEnabled?: boolean }) => {
       const res = await fetch(api.userSettings.update.path, {
         method: api.userSettings.update.method,
         headers: { "Content-Type": "application/json" },
@@ -29,7 +29,7 @@ export function useUserSettings() {
       queryClient.setQueryData([api.userSettings.get.path], data);
       toast({
         title: "Settings updated",
-        description: "Your AI summary preferences have been saved.",
+        description: "Your preferences have been saved.",
       });
     },
     onError: (error: Error) => {

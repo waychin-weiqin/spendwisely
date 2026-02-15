@@ -9,6 +9,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   password: text("password").notNull(), // This will store the passcode
   summaryEnabled: boolean("summary_enabled").notNull().default(true),
+  budgetEnabled: boolean("budget_enabled").notNull().default(false),
 });
 
 export const expenses = pgTable("expenses", {
@@ -64,6 +65,17 @@ export const monthlySummaries = pgTable("monthly_summaries", {
   emailedAt: timestamp("emailed_at"),
 });
 
+export const budgets = pgTable("budgets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  category: text("category").notNull(),
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  period: text("period").notNull(), // "weekly" | "monthly" | "quarterly"
+  enabled: boolean("enabled").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 export const sessions = pgTable("session", {
   sid: text("sid").primaryKey(),
   sess: text("sess").notNull(),
@@ -74,6 +86,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   expenses: many(expenses),
   goals: many(goals),
   incomes: many(incomes),
+  budgets: many(budgets),
 }));
 
 export const expensesRelations = relations(expenses, ({ one }) => ({
@@ -107,6 +120,13 @@ export const passwordResetsRelations = relations(passwordResets, ({ one }) => ({
 export const monthlySummariesRelations = relations(monthlySummaries, ({ one }) => ({
   user: one(users, {
     fields: [monthlySummaries.userId],
+    references: [users.id],
+  }),
+}));
+
+export const budgetsRelations = relations(budgets, ({ one }) => ({
+  user: one(users, {
+    fields: [budgets.userId],
     references: [users.id],
   }),
 }));
@@ -207,3 +227,17 @@ export type Goal = typeof goals.$inferSelect;
 export type InsertGoal = z.infer<typeof insertGoalSchema>;
 export type PasswordReset = typeof passwordResets.$inferSelect;
 export type MonthlySummary = typeof monthlySummaries.$inferSelect;
+
+export const budgetPeriodEnum = z.enum(["weekly", "monthly", "quarterly"]);
+
+export const insertBudgetSchema = createInsertSchema(budgets)
+  .omit({ id: true, userId: true, createdAt: true, updatedAt: true })
+  .extend({
+    amount: z.coerce.number().positive(),
+    period: budgetPeriodEnum,
+    enabled: z.boolean().optional().default(true),
+  });
+
+export type Budget = typeof budgets.$inferSelect;
+export type InsertBudget = z.infer<typeof insertBudgetSchema>;
+export type BudgetPeriod = z.infer<typeof budgetPeriodEnum>;
